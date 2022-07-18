@@ -10,14 +10,14 @@ TIMEOUT = 5
 # Check if checker.env exists
 # If checker.env exists, load the accounts and timeout from it
 # If checker.env does not exist, create file and load the default values
-if not os.path.exists(rf"checker.env"):
+if not os.path.exists("checker.env"):
     with open(r"checker.env", "w") as f:
         f.write(f"ACCOUNTS={ACCOUNTS}\n")
         f.write(f"TIMEOUT={TIMEOUT}")
     print("Please input accounts and timeout in the new checker.env file")
     exit()
 
-with open(rf"checker.env", "r") as f:
+with open("checker.env", "r") as f:
     ENV_DICT = dict(
         tuple(line.replace("\n", "").split("="))
         for line in f.readlines()
@@ -154,10 +154,8 @@ class ChampionData:
             os.makedirs(os.path.dirname(CHAMPION_FILE_PATH))
 
         if not os.path.exists(CHAMPION_FILE_PATH):
-            file = open(CHAMPION_FILE_PATH, "x", encoding="utf-8")
-            json.dump({"version": "0"}, file, ensure_ascii=False, indent=2)
-            file.close()
-
+            with open(CHAMPION_FILE_PATH, "x", encoding="utf-8") as file:
+                json.dump({"version": "0"}, file, ensure_ascii=False, indent=2)
         updated_champion_data = {}
         champion_data = {}
 
@@ -167,12 +165,8 @@ class ChampionData:
         with open(CHAMPION_FILE_PATH, "w", encoding="utf-8") as writer:
             if champion_data["version"] != self.game_version:
                 champion_data = self.build_champion_data()
-                updated_champion_data = champion_data
-                json.dump(champion_data, writer, ensure_ascii=False, indent=2)
-            else:
-                updated_champion_data = champion_data
-                json.dump(champion_data, writer, ensure_ascii=False, indent=2)
-
+            updated_champion_data = champion_data
+            json.dump(updated_champion_data, writer, ensure_ascii=False, indent=2)
         return updated_champion_data
 
 
@@ -245,8 +239,7 @@ class AccountChecker:
             print(f"Response: {response}")
             raise
 
-        tokens = [x.split("&")[0] for x in uri.split("=")]
-        return tokens
+        return [x.split("&")[0] for x in uri.split("=")]
 
     def _get_user_info(self):
         return self.session.post(url=Constants.INFO_URL).json()
@@ -294,12 +287,11 @@ class AccountChecker:
         return response["player"]
 
     def get_purchase_history(self):
-        response = self.session.get(
+        return self.session.get(
             Constants.HISTORY_URL.format(
                 store_front_id=Constants.STORE_FRONTS[self.region_id]
             )
         ).json()
-        return response
 
     def refundable_RP(self):
         history = self.purchase_history
@@ -309,8 +301,7 @@ class AccountChecker:
             for x in history["transactions"]
             if x["refundable"] and x["currencyType"] == "RP"
         ]
-        result = sum(sorted(refundables, reverse=True)[:refund_num])
-        return result
+        return sum(sorted(refundables, reverse=True)[:refund_num])
 
     def refundable_IP(self):
         history = self.purchase_history
@@ -320,8 +311,7 @@ class AccountChecker:
             for x in history["transactions"]
             if x["refundable"] and x["currencyType"] == "IP"
         ]
-        result = sum(sorted(refundables, reverse=True)[:refund_num])
-        return result
+        return sum(sorted(refundables, reverse=True)[:refund_num])
 
     def last_play(self):
         response = self.session.get(
@@ -337,7 +327,7 @@ class AccountChecker:
             print(f"Response: {response}")
             return "Unknown"
 
-        if len(recent_match_date) > 0:
+        if recent_match_date:
             return datetime.strptime(
                 recent_match_date[0]["gameCreation"], "%Y-%m-%dT%H:%M:%S.%fZ"
             )
@@ -412,18 +402,16 @@ class AccountChecker:
         return " | ".join(ret_str)
 
 
-account_list = [i for i in ACCOUNTS.replace(" ", "").split(",")]
+account_list = list(ACCOUNTS.replace(" ", "").split(","))
 
 
 def load_account(account):
     user, pw = account.split(":")
-    # account_checker = AccountChecker(user, pw, {"https": "https://PROXY:PORT"})
-    account_checker = AccountChecker(user, pw)
-    return account_checker
+    return AccountChecker(user, pw)
 
 
 time1 = time.time()
-print(f"Checking/building champion data...")
+print("Checking/building champion data...")
 cache_champion_data = ChampionData()
 cache_champion_data.get_champion_data()
 time2 = time.time()
@@ -431,7 +419,7 @@ print(f"Took {time2-time1:.2f} s")
 
 time1 = time.time()
 formated_time = datetime.fromtimestamp(time1).strftime("%Y-%m-%d_%H-%M-%S")
-print(f"Checking accounts, please wait...")
+print("Checking accounts, please wait...")
 
 ACCOUNTS_FOLDER_PATH = r"output/"
 
